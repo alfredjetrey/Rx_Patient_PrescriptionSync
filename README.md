@@ -7,4 +7,6 @@ Because this data is protected by strict healthcare laws (like PIPEDA in Canada 
 
 We must secure this machine-to-machine connection using an OAuth 2.0 Client Credentials model.
 
+:)
+
  
