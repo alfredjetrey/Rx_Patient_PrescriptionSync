@@ -1,0 +1,6 @@
+@Rx_Patient_PrescriptionSync_HostAddress = http://localhost:5042
+
+GET {{Rx_Patient_PrescriptionSync_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
