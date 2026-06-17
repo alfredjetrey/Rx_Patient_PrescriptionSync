@@ -1,8 +1,9 @@
-using Rx_Patient_PrescriptionSync;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using Rx_Patient_PrescriptionSync;
+using Rx_Patient_PrescriptionSync.Model;
 using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -19,28 +20,45 @@ var app = builder.Build();
 app.UseMiddleware(typeof(IdentityGatewayMiddleware));
 
 
-// TEST TOOL ENDPOINT: Simulates Rexall's centralized OAuth Identity Server generating a token
-app.MapGet("/api/get-token", (IConfiguration config) =>
+app.MapPost("/api/get-token", (TokenRequestModel request, IConfiguration config) =>
 {
+    // 1. Validate Machine Credentials (Simulating a database lookup)
+    var validSecret = config["IdentitySettings:SecretKey"]!;
+
+    // Simple verification check: in production, you would check a database of registered bots
+    if (request.ClientId != "RexallBot-01" || request.ClientSecret != validSecret)
+    {
+        return Results.Json(new { Error = "invalid_client", Message = "Authentication failed." }, statusCode: 401);
+    }
+
+    // 2. Build the Token Generation Infrastructure
     var tokenHandler = new JwtSecurityTokenHandler();
-    var key = Encoding.UTF8.GetBytes(config["IdentitySettings:SecretKey"]!);
+    var key = Encoding.UTF8.GetBytes(validSecret);
 
     var tokenDescriptor = new SecurityTokenDescriptor
     {
+        //  THE DYNAMIC CLAIMS ENGINE: Values are injected straight from the client request
         Subject = new ClaimsIdentity(new[]
         {
-            new Claim(ClaimTypes.Role, config["IdentitySettings:RequiredRole"]!),
-            new Claim("location_id", "Store-Mississauga-0412"),
-            new Claim("scope", "prescriptions.sync")
+            new Claim(ClaimTypes.Role, config["IdentitySettings:RequiredRole"]!), // Enforces AutomatedDispenserBot
+            new Claim("location_id", request.RequestedLocation),                  // Dynamically injected location
+            new Claim("scope", request.RequestedScope)                            // Dynamically injected scope
         }),
-        Expires = DateTime.UtcNow.AddMinutes(60), // Short lifespan for security compliance
+        Expires = DateTime.UtcNow.AddMinutes(30),
         Issuer = config["IdentitySettings:Issuer"],
         Audience = config["IdentitySettings:Audience"],
         SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
     };
 
     var token = tokenHandler.CreateToken(tokenDescriptor);
-    return new { Token = tokenHandler.WriteToken(token) };
+
+    // Return standard OAuth-compliant response format
+    return Results.Ok(new
+    {
+        access_token = tokenHandler.WriteToken(token),
+        token_type = "Bearer",
+        expires_in = 1800
+    });
 });
 
 // SECURED RESOURCE ENDPOINT: High-risk patient prescription queue

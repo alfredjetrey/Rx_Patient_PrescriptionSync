@@ -39,3 +39,19 @@ Option A (Easiest): Open a tool like Postman,
 
 PS C:\Users\ABaldeviso> $headers = @{ "Authorization" = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiQXV0b21hdGVkRGlzcGVuc2VyQm90IiwibG9jYXRpb25faWQiOiJTdG9yZS1NaXNzaXNzYXVnYS0wNDEyIiwic2NvcGUiOiJwcmVzY3JpcHRpb25zLnN5bmMiLCJuYmYiOjE3ODE3MjEzNDcsImV4cCI6MTc4MTcyMzE0NywiaWF0IjoxNzgxNzIxMzQ3LCJpc3MiOiJSZXhhbGxJZGVudGl0eVNlcnZlciIsImF1ZCI6IlJleGFsbEdhdGV3YXkifQ.1VtfkhG5sgtZt1dwrjdVFpkikgX1roY_2h93iGYAkKE" }
 PS C:\Users\ABaldeviso> Invoke-RestMethod -Uri "http://localhost:5042/api/v1/pharmacy/dispense-queue" -Headers $headers
+
+
+This is the updated test how to generate Bearer JWT dynamically.
+
+# 1. Ask for a dynamic token for Store-Toronto-0999 with "prescriptions.sync" scope
+$body = @{
+    ClientId = "RexallBot-01"
+    ClientSecret = "CRITICAL_PHARMACY_SECRET_KEY_KEEP_THIS_LONG_AND_SAFE_2026!"
+    RequestedLocation = "Store-Toronto-0999"
+    RequestedScope = "prescriptions.sync"
+} | ConvertTo-Json
+
+$tokenResponse = Invoke-RestMethod -Uri "http://localhost:5042/api/get-token" -Method Post -Body $body -ContentType "application/json"
+
+# 2. Extract and view your brand-new dynamic token response
+$tokenResponse 
